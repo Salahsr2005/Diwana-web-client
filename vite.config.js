@@ -14,7 +14,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: false,
     minify: "terser",
-    target: "es2015",
+    target: "esnext",
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
@@ -23,20 +23,18 @@ export default defineConfig({
       output: {
         manualChunks: {
           "react-vendor": ["react", "react-dom", "react-router-dom"],
-          "map-vendor": ["mapbox-gl", "react-map-gl"],
           "socket-vendor": ["socket.io-client"],
         },
       },
     },
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom", "mapbox-gl", "react-map-gl", "socket.io-client"],
+    include: ["react", "react-dom", "react-router-dom", "socket.io-client"],
   },
   define: {
     global: "globalThis",
   },
   esbuild: {
-    drop: ["console", "debugger"],
-    target: "es2015",
+    target: "esnext",
   },
 })

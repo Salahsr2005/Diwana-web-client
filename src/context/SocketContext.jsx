@@ -14,7 +14,10 @@ export const SocketContextProvider = ({ children }) => {
 
   useEffect(() => {
     if (currentUser) {
-      const newSocket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:4000", {
+      // Use environment variable or fallback to localhost
+      const socketUrl = import.meta.process.env.VITE_SOCKET_URL || "http://localhost:4000"
+
+      const newSocket = io(socketUrl, {
         transports: ["websocket", "polling"],
         timeout: 20000,
         reconnection: true,
