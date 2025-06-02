@@ -14,7 +14,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: false,
     minify: "terser",
-    target: "esnext",
+    target: "esnext", // Changed from es2015 to support import.meta
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
@@ -35,6 +35,7 @@ export default defineConfig({
     global: "globalThis",
   },
   esbuild: {
+    drop: ["console", "debugger"],
     target: "esnext",
   },
 })

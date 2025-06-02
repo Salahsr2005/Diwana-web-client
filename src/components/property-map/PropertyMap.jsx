@@ -1,5 +1,6 @@
 "use client"
 
+import { handleImageError } from "../../lib/placeholderUtils"
 // import { useEffect, useRef, useState } from "react" // Removed as not used in merged code
 import "./property-map.scss"
 // import mapboxgl from "mapbox-gl" // Removed as not used in merged code
@@ -43,7 +44,7 @@ const ICON = icon({
 
 const PropertyMap = ({
   items,
-  properties,
+  properties = [],
   userLocation,
   selectedProperty,
   onPropertySelect,
@@ -66,6 +67,7 @@ const PropertyMap = ({
   const [mapError, setMapError] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [validItems, setValidItems] = useState([])
+  const [mapReady, setMapReady] = useState(false)
 
   // const mapStyles = [ // Removed as not used in merged code
   //   { id: "streets-v12", name: "Streets", url: "mapbox://styles/mapbox/streets-v12" }, // Removed as not used in merged code
@@ -78,7 +80,7 @@ const PropertyMap = ({
   const getOwnerData = (propertyId) => ({
     id: propertyId,
     name: "John Smith",
-    avatar: "/placeholder.svg?height=60&width=60",
+    avatar: "https://via.placeholder.com/60x60?text=Owner",
     rating: 4.8,
     reviewCount: 127,
     responseTime: "Usually responds within 2 hours",
@@ -326,6 +328,22 @@ const PropertyMap = ({
       lng >= -180 &&
       lng <= 180
     )
+  }
+
+  useEffect(() => {
+    // Simulate map loading
+    const timer = setTimeout(() => {
+      setMapReady(true)
+      if (onMapLoaded) onMapLoaded()
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [onMapLoaded])
+
+  const handlePropertyClick = (property) => {
+    if (onPropertySelect) {
+      onPropertySelect(property)
+    }
   }
 
   // Update properties on map
@@ -729,8 +747,9 @@ const PropertyMap = ({
           <div className="tooltip-content">
             <div className="property-image">
               <img
-                src={propertyTooltip.property.images?.[0] || "/placeholder.svg?height=80&width=120"}
+                src={propertyTooltip.property.images?.[0] || "https://via.placeholder.com/120x80?text=Property"}
                 alt={propertyTooltip.property.title}
+                onError={handleImageError}
               />
               <div className="property-type">{propertyTooltip.property.type === "rent" ? "For Rent" : "For Sale"}</div>
             </div>
@@ -749,7 +768,12 @@ const PropertyMap = ({
                 </span>
               </div>
               <div className="owner-info">
-                <img src="/placeholder.svg?height=24&width=24" alt="Owner" className="owner-avatar" />
+                <img
+                  src="https://via.placeholder.com/24x24?text=Owner"
+                  alt="Owner"
+                  className="owner-avatar"
+                  onError={handleImageError}
+                />
                 <span>John Smith</span>
                 <div className="owner-rating">
                   <Star size={12} fill="currentColor" />
@@ -817,8 +841,9 @@ const PropertyMap = ({
 
             <div className="card-image">
               <img
-                src={activePropertyCard.images?.[0] || "/placeholder.svg?height=200&width=300"}
+                src={activePropertyCard.images?.[0] || "https://via.placeholder.com/120x80?text=Property"}
                 alt={activePropertyCard.title}
+                onError={handleImageError}
               />
               <div className="property-badges">
                 <div className="property-type-badge">
@@ -876,7 +901,12 @@ const PropertyMap = ({
               {/* Owner Information */}
               <div className="owner-section">
                 <div className="owner-info" onClick={() => handleOwnerClick(activePropertyCard)}>
-                  <img src="/placeholder.svg?height=40&width=40" alt="Owner" className="owner-avatar" />
+                  <img
+                    src="https://via.placeholder.com/40x40?text=Owner"
+                    alt="Owner"
+                    className="owner-avatar"
+                    onError={handleImageError}
+                  />
                   <div className="owner-details">
                     <h4>John Smith</h4>
                     <div className="owner-rating">
@@ -915,9 +945,10 @@ const PropertyMap = ({
 
             <div className="owner-header">
               <img
-                src={selectedOwner.avatar || "/placeholder.svg"}
+                src={selectedOwner.avatar || "https://via.placeholder.com/60x60?text=Owner"}
                 alt={selectedOwner.name}
                 className="owner-avatar-large"
+                onError={handleImageError}
               />
               <div className="owner-info">
                 <div className="owner-name-section">
