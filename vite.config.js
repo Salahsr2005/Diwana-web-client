@@ -1,20 +1,20 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import path from "path"
-import { fileURLToPath, URL } from "node:url"
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   build: {
     outDir: "dist",
-    sourcemap: false, // Completely disable sourcemaps
+    sourcemap: false,
     minify: "terser",
+    target: "es2015",
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
@@ -37,5 +37,6 @@ export default defineConfig({
   },
   esbuild: {
     drop: ["console", "debugger"],
+    target: "es2015",
   },
 })
