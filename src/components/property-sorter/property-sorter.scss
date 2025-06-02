@@ -1,0 +1,45 @@
+.property-sorter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: var(--background-hover);
+    border-color: var(--primary-200);
+    color: var(--text-primary);
+  }
+  
+  .sorter-icon {
+    display: flex;
+    align-items: center;
+    color: var(--primary-500);
+  }
+  
+  .sort-select {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 120px;
+    
+    &:focus {
+      outline: none;
+    }
+  }
+  
+  .dropdown-icon {
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+}

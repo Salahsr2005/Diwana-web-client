@@ -1,0 +1,44 @@
+@import "../../responsive.scss";
+
+.layout {
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-50);
+
+  @include lg {
+    max-width: 1280px;
+  }
+
+  @include md {
+    max-width: 768px;
+    padding: 0 var(--space-3);
+  }
+
+  @include sm {
+    max-width: 640px;
+    padding: 0 var(--space-2);
+  }
+
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .content {
+    flex: 1;
+    min-height: calc(100vh - 100px);
+    padding: var(--space-6) 0;
+
+    @include sm {
+      padding: var(--space-4) 0;
+    }
+  }
+}

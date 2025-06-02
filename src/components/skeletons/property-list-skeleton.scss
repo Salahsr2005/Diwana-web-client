@@ -1,0 +1,155 @@
+.property-skeleton-container {
+  &.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    
+    @media (min-width: 1024px) {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+    
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  &.list,
+  &.split {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
+.property-skeleton {
+  background-color: var(--background);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  animation: pulse 2s infinite;
+  
+  &.grid {
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+  }
+  
+  &.list,
+  &.split {
+    display: flex;
+    flex-direction: row;
+    height: 200px;
+    
+    .skeleton-image {
+      width: 300px;
+      flex-shrink: 0;
+    }
+    
+    .skeleton-content {
+      flex: 1;
+      padding: 1.5rem;
+    }
+  }
+  
+  .skeleton-image {
+    position: relative;
+    height: 240px;
+    background-color: var(--background-secondary);
+    overflow: hidden;
+    
+    .skeleton-shimmer {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+      );
+      animation: shimmer 2s infinite;
+    }
+  }
+  
+  .skeleton-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+    
+    .skeleton-line {
+      height: 16px;
+      background-color: var(--background-secondary);
+      border-radius: 4px;
+      
+      &.price {
+        height: 24px;
+        width: 40%;
+        background-color: var(--primary-100);
+      }
+      
+      &.title {
+        height: 20px;
+        width: 80%;
+      }
+      
+      &.location {
+        height: 14px;
+        width: 60%;
+      }
+    }
+    
+    .skeleton-features {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      
+      .skeleton-feature {
+        width: 60px;
+        height: 16px;
+        background-color: var(--background-secondary);
+        border-radius: 4px;
+      }
+    }
+    
+    .skeleton-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: auto;
+      
+      .skeleton-button {
+        height: 40px;
+        background-color: var(--background-secondary);
+        border-radius: 8px;
+        flex: 1;
+        
+        &.primary {
+          background-color: var(--primary-100);
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}

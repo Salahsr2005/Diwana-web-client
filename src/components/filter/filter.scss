@@ -1,0 +1,96 @@
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  background: white;
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+
+  h1 {
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+
+    b {
+      color: var(--primary-600);
+    }
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    input,
+    select {
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-lg);
+      font-size: 0.875rem;
+      background: white;
+      color: var(--gray-700);
+      transition: all 0.2s ease-in-out;
+
+      &:focus {
+        outline: none;
+        border-color: var(--primary-400);
+        box-shadow: 0 0 0 3px var(--primary-100);
+      }
+
+      &::placeholder {
+        color: var(--gray-400);
+      }
+    }
+
+    select {
+      cursor: pointer;
+    }
+  }
+
+  .top {
+    .item input {
+      width: 100%;
+    }
+  }
+
+  .bottom {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-4);
+    align-items: end;
+
+    button {
+      padding: var(--space-3) var(--space-4);
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent-400), var(--accent-500));
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease-in-out;
+      box-shadow: var(--shadow-sm);
+
+      &:hover {
+        background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+
+      img {
+        width: 20px;
+        height: 20px;
+        filter: brightness(0) saturate(100%) invert(13%) sepia(94%) saturate(1352%) hue-rotate(87deg) brightness(119%) contrast(119%);
+      }
+    }
+  }
+}
