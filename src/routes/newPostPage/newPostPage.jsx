@@ -9,6 +9,7 @@ import UploadWidget from "../../components/uploadWidget/UploadWidget"
 import { useNavigate } from "react-router-dom"
 import { Home, MapPin, DollarSign, Bed, Bath, Square, Upload, CheckCircle, AlertCircle, Loader } from "lucide-react"
 import LocationPicker from "../../components/location-picker/LocationPicker"
+import toast from "react-hot-toast"
 
 function NewPostPage() {
   const [value, setValue] = useState("")
@@ -51,50 +52,128 @@ function NewPostPage() {
       ...prev,
       [name]: value,
     }))
+    // Clear error when user starts typing
+    if (error) setError("")
+  }
+
+  const validateStep = (step) => {
+    switch (step) {
+      case 1:
+        if (!formData.title.trim()) {
+          setError("Property title is required")
+          return false
+        }
+        if (!formData.price || formData.price <= 0) {
+          setError("Valid price is required")
+          return false
+        }
+        break
+      case 2:
+        if (!formData.bedroom || formData.bedroom <= 0) {
+          setError("Number of bedrooms is required")
+          return false
+        }
+        if (!formData.bathroom || formData.bathroom <= 0) {
+          setError("Number of bathrooms is required")
+          return false
+        }
+        if (!formData.size || formData.size <= 0) {
+          setError("Property size is required")
+          return false
+        }
+        break
+      case 3:
+        if (!formData.address.trim()) {
+          setError("Address is required")
+          return false
+        }
+        if (!formData.city.trim()) {
+          setError("City is required")
+          return false
+        }
+        if (!formData.latitude || !formData.longitude) {
+          setError("Please select location on the map")
+          return false
+        }
+        break
+      case 4:
+        if (images.length === 0) {
+          setError("At least one image is required")
+          return false
+        }
+        break
+      default:
+        return true
+    }
+    setError("")
+    return true
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Validate all steps
+    for (let i = 1; i <= 4; i++) {
+      if (!validateStep(i)) {
+        setCurrentStep(i)
+        return
+      }
+    }
+
+    if (!value.trim()) {
+      setError("Property description is required")
+      setCurrentStep(2)
+      return
+    }
+
     setIsLoading(true)
     setError("")
 
     try {
+      const postData = {
+        title: formData.title.trim(),
+        price: Number.parseInt(formData.price),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        bedroom: Number.parseInt(formData.bedroom),
+        bathroom: Number.parseInt(formData.bathroom),
+        type: formData.type,
+        property: formData.property,
+        latitude: formData.latitude.toString(),
+        longitude: formData.longitude.toString(),
+        images: images,
+      }
+
+      const postDetail = {
+        desc: value.trim(),
+        utilities: formData.utilities,
+        pet: formData.pet,
+        income: formData.income.trim(),
+        size: Number.parseInt(formData.size),
+        school: formData.school ? Number.parseInt(formData.school) : null,
+        bus: formData.bus ? Number.parseInt(formData.bus) : null,
+        restaurant: formData.restaurant ? Number.parseInt(formData.restaurant) : null,
+      }
+
       const res = await apiRequest.post("/posts", {
-        postData: {
-          title: formData.title,
-          price: Number.parseInt(formData.price),
-          address: formData.address,
-          city: formData.city,
-          bedroom: Number.parseInt(formData.bedroom),
-          bathroom: Number.parseInt(formData.bathroom),
-          type: formData.type,
-          property: formData.property,
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-          images: images,
-        },
-        postDetail: {
-          desc: value,
-          utilities: formData.utilities,
-          pet: formData.pet,
-          income: formData.income,
-          size: Number.parseInt(formData.size),
-          school: Number.parseInt(formData.school),
-          bus: Number.parseInt(formData.bus),
-          restaurant: Number.parseInt(formData.restaurant),
-        },
+        postData,
+        postDetail,
       })
-      navigate("/" + res.data.id)
+
+      toast.success("Property listing created successfully!")
+      navigate(`/${res.data.id}`)
     } catch (err) {
-      console.error(err)
-      setError(err.response?.data?.message || "Failed to create property listing")
+      console.error("Error creating post:", err)
+      const errorMessage = err.response?.data?.message || "Failed to create property listing"
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
   }
 
   const nextStep = () => {
-    if (currentStep < 4) {
+    if (validateStep(currentStep) && currentStep < 4) {
       setCurrentStep(currentStep + 1)
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
@@ -110,11 +189,18 @@ function NewPostPage() {
   const isStepValid = (step) => {
     switch (step) {
       case 1:
-        return formData.title && formData.price && formData.type && formData.property
+        return formData.title.trim() && formData.price && Number(formData.price) > 0
       case 2:
-        return formData.bedroom && formData.bathroom && formData.size
+        return (
+          formData.bedroom &&
+          formData.bathroom &&
+          formData.size &&
+          Number(formData.bedroom) > 0 &&
+          Number(formData.bathroom) > 0 &&
+          Number(formData.size) > 0
+        )
       case 3:
-        return formData.address && formData.city && formData.latitude && formData.longitude
+        return formData.address.trim() && formData.city.trim() && formData.latitude && formData.longitude
       case 4:
         return images.length > 0
       default:
@@ -127,11 +213,12 @@ function NewPostPage() {
     if (location) {
       setFormData((prev) => ({
         ...prev,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
         address: location.address || prev.address,
         city: location.address ? extractCity(location.address) : prev.city,
       }))
+      setError("") // Clear any location-related errors
     }
   }
 
@@ -140,7 +227,6 @@ function NewPostPage() {
     if (!address) return ""
 
     // Try to extract city from address
-    // This is a simple implementation - could be improved with more sophisticated parsing
     const parts = address.split(",").map((part) => part.trim())
 
     // Usually city is the second-to-last or third-to-last part
@@ -151,6 +237,15 @@ function NewPostPage() {
     }
 
     return ""
+  }
+
+  const handleImageUpload = (newImages) => {
+    setImages(newImages)
+    setError("") // Clear any image-related errors
+  }
+
+  const removeImage = (index) => {
+    setImages(images.filter((_, i) => i !== index))
   }
 
   return (
@@ -198,7 +293,7 @@ function NewPostPage() {
                 <div className="form-group full-width">
                   <label htmlFor="title">
                     <Home size={18} />
-                    Property Title
+                    Property Title *
                   </label>
                   <input
                     id="title"
@@ -214,12 +309,13 @@ function NewPostPage() {
                 <div className="form-group">
                   <label htmlFor="price">
                     <DollarSign size={18} />
-                    Price
+                    Price *
                   </label>
                   <input
                     id="price"
                     name="price"
                     type="number"
+                    min="1"
                     placeholder="Enter price"
                     value={formData.price}
                     onChange={handleInputChange}
@@ -230,9 +326,9 @@ function NewPostPage() {
                 <div className="form-group">
                   <label htmlFor="type">
                     <Home size={18} />
-                    Listing Type
+                    Listing Type *
                   </label>
-                  <select name="type" value={formData.type} onChange={handleInputChange}>
+                  <select name="type" value={formData.type} onChange={handleInputChange} required>
                     <option value="rent">For Rent</option>
                     <option value="buy">For Sale</option>
                   </select>
@@ -241,7 +337,7 @@ function NewPostPage() {
                 <div className="form-group full-width">
                   <label htmlFor="property">
                     <Square size={18} />
-                    Property Type
+                    Property Type *
                   </label>
                   <div className="property-type-grid">
                     {["apartment", "house", "condo", "land"].map((type) => (
@@ -252,6 +348,7 @@ function NewPostPage() {
                           value={type}
                           checked={formData.property === type}
                           onChange={handleInputChange}
+                          required
                         />
                         <span className="option-content">
                           <Home size={20} />
@@ -278,7 +375,7 @@ function NewPostPage() {
                 <div className="form-group">
                   <label htmlFor="bedroom">
                     <Bed size={18} />
-                    Bedrooms
+                    Bedrooms *
                   </label>
                   <input
                     id="bedroom"
@@ -295,7 +392,7 @@ function NewPostPage() {
                 <div className="form-group">
                   <label htmlFor="bathroom">
                     <Bath size={18} />
-                    Bathrooms
+                    Bathrooms *
                   </label>
                   <input
                     id="bathroom"
@@ -312,13 +409,13 @@ function NewPostPage() {
                 <div className="form-group">
                   <label htmlFor="size">
                     <Square size={18} />
-                    Size (sqft)
+                    Size (sqft) *
                   </label>
                   <input
                     id="size"
                     name="size"
                     type="number"
-                    min="0"
+                    min="1"
                     placeholder="Total size in square feet"
                     value={formData.size}
                     onChange={handleInputChange}
@@ -356,7 +453,7 @@ function NewPostPage() {
                 </div>
 
                 <div className="form-group full-width">
-                  <label htmlFor="description">Description</label>
+                  <label htmlFor="description">Description *</label>
                   <div className="quill-container">
                     <ReactQuill
                       theme="snow"
@@ -385,7 +482,10 @@ function NewPostPage() {
                     onLocationSelect={handleLocationSelect}
                     initialLocation={
                       formData.latitude && formData.longitude
-                        ? { latitude: formData.latitude, longitude: formData.longitude }
+                        ? {
+                            latitude: Number.parseFloat(formData.latitude),
+                            longitude: Number.parseFloat(formData.longitude),
+                          }
                         : null
                     }
                     initialAddress={formData.address}
@@ -396,7 +496,7 @@ function NewPostPage() {
                   <div className="form-group">
                     <label htmlFor="address">
                       <MapPin size={18} />
-                      Full Address
+                      Full Address *
                     </label>
                     <input
                       id="address"
@@ -410,7 +510,7 @@ function NewPostPage() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="city">City</label>
+                    <label htmlFor="city">City *</label>
                     <input
                       id="city"
                       name="city"
@@ -431,7 +531,7 @@ function NewPostPage() {
                       placeholder="e.g., 40.7128"
                       value={formData.latitude}
                       onChange={handleInputChange}
-                      required
+                      readOnly
                     />
                   </div>
 
@@ -444,7 +544,7 @@ function NewPostPage() {
                       placeholder="e.g., -74.0060"
                       value={formData.longitude}
                       onChange={handleInputChange}
-                      required
+                      readOnly
                     />
                   </div>
 
@@ -458,7 +558,7 @@ function NewPostPage() {
                 </div>
 
                 <div className="nearby-places">
-                  <h3>Nearby Places</h3>
+                  <h3>Nearby Places (Optional)</h3>
                   <p>Enter the distance to nearby amenities (in meters)</p>
 
                   <div className="nearby-grid">
@@ -524,7 +624,7 @@ function NewPostPage() {
                       uploadPreset: "estate",
                       folder: "posts",
                     }}
-                    setState={setImages}
+                    setState={handleImageUpload}
                   />
                 </div>
 
@@ -533,11 +633,7 @@ function NewPostPage() {
                     {images.map((image, index) => (
                       <div key={index} className="image-preview">
                         <img src={image || "/placeholder.svg"} alt={`Property ${index + 1}`} />
-                        <button
-                          type="button"
-                          className="remove-image"
-                          onClick={() => setImages(images.filter((_, i) => i !== index))}
-                        >
+                        <button type="button" className="remove-image" onClick={() => removeImage(index)}>
                           ×
                         </button>
                         {index === 0 && <div className="primary-badge">Primary</div>}
@@ -549,7 +645,7 @@ function NewPostPage() {
                 <div className="upload-tips">
                   <h4>Photo Tips</h4>
                   <ul>
-                    <li>Upload at least 5 high-quality photos</li>
+                    <li>Upload at least 1 high-quality photo (required)</li>
                     <li>Include exterior and interior shots</li>
                     <li>Show key features and amenities</li>
                     <li>Use good lighting and clear angles</li>
@@ -557,6 +653,14 @@ function NewPostPage() {
                   </ul>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="error-message">
+              <AlertCircle size={18} />
+              <span>{error}</span>
             </div>
           )}
 
@@ -593,13 +697,6 @@ function NewPostPage() {
               </button>
             )}
           </div>
-
-          {error && (
-            <div className="error-message">
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
         </div>
       </form>
     </div>

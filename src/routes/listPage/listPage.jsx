@@ -9,32 +9,19 @@ import PropertyMap from "../../components/property-map/PropertyMap"
 import PropertyFilters from "../../components/property-filters/PropertyFilters"
 import PropertySorter from "../../components/property-sorter/PropertySorter"
 import PropertyListSkeleton from "../../components/skeletons/PropertyListSkeleton"
-import {
-  MapPin,
-  Grid,
-  List,
-  MapIcon,
-  SlidersHorizontal,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Bookmark,
-  Share2,
-  Info,
-} from "lucide-react"
 
 function ListPage() {
   const data = useLoaderData()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState(() => {
-    // Default to grid on mobile, split on desktop
     return window.innerWidth < 768 ? "grid" : "split"
   })
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "recommended")
   const [showFilters, setShowFilters] = useState(false)
   const [userLocation, setUserLocation] = useState(null)
   const [filteredProperties, setFilteredProperties] = useState([])
+  const [allProperties, setAllProperties] = useState([])
   const [mapBounds, setMapBounds] = useState(null)
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
@@ -42,9 +29,10 @@ function ListPage() {
   const [savedSearches, setSavedSearches] = useState([])
   const [showSavedSearches, setShowSavedSearches] = useState(false)
   const [activeFilters, setActiveFilters] = useState({})
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("city") || "")
   const filtersRef = useRef(null)
 
-  // Get user location from URL params if available
+  // Get user location from URL params or browser
   useEffect(() => {
     const userLat = searchParams.get("userLat")
     const userLng = searchParams.get("userLng")
@@ -89,6 +77,7 @@ function ListPage() {
       }
     }
     setActiveFilters(filters)
+    setSearchQuery(searchParams.get("city") || "")
   }, [searchParams])
 
   // Handle sorting and filtering
@@ -119,6 +108,21 @@ function ListPage() {
         newParams.delete(key)
       }
     })
+
+    setSearchParams(newParams)
+  }
+
+  const handleSearchSubmit = (searchData) => {
+    const newParams = new URLSearchParams(searchParams)
+
+    // Update search parameters
+    if (searchData.city) {
+      newParams.set("city", searchData.city)
+      setSearchQuery(searchData.city)
+    }
+    if (searchData.type) newParams.set("type", searchData.type)
+    if (searchData.minPrice) newParams.set("minPrice", searchData.minPrice)
+    if (searchData.maxPrice) newParams.set("maxPrice", searchData.maxPrice)
 
     setSearchParams(newParams)
   }
@@ -202,7 +206,7 @@ function ListPage() {
       <div className="search-container">
         <PropertySearchBar
           initialValues={Object.fromEntries(searchParams)}
-          onSearch={handleFilterChange}
+          onSearch={handleSearchSubmit}
           userLocation={userLocation}
         />
       </div>
@@ -220,21 +224,21 @@ function ListPage() {
                   onClick={() => setViewMode("grid")}
                   title="Grid View"
                 >
-                  <Grid size={18} />
+                  <span className="icon">⊞</span>
                 </button>
                 <button
                   className={`view-btn ${viewMode === "list" ? "active" : ""}`}
                   onClick={() => setViewMode("list")}
                   title="List View"
                 >
-                  <List size={18} />
+                  <span className="icon">☰</span>
                 </button>
                 <button
                   className={`view-btn ${viewMode === "map" ? "active" : ""}`}
                   onClick={() => setViewMode("map")}
                   title="Map View"
                 >
-                  <MapIcon size={18} />
+                  <span className="icon">🗺️</span>
                 </button>
                 {window.innerWidth >= 768 && (
                   <button
@@ -257,7 +261,7 @@ function ListPage() {
                   className={`filter-toggle-btn ${showFilters ? "active" : ""}`}
                   onClick={() => setShowFilters(!showFilters)}
                 >
-                  <SlidersHorizontal size={18} />
+                  <span className="icon">🎛️</span>
                   <span>Filters</span>
                   {Object.keys(activeFilters).length > 0 && (
                     <span className="filter-count">{Object.keys(activeFilters).length}</span>
@@ -270,7 +274,7 @@ function ListPage() {
                     onClick={() => setShowSavedSearches(!showSavedSearches)}
                     title="Saved Searches"
                   >
-                    <Bookmark size={18} />
+                    <span className="icon">🔖</span>
                   </button>
 
                   {showSavedSearches && (
@@ -278,7 +282,7 @@ function ListPage() {
                       <div className="saved-searches-header">
                         <h4>Saved Searches</h4>
                         <button onClick={() => setShowSavedSearches(false)}>
-                          <X size={16} />
+                          <span className="icon">✕</span>
                         </button>
                       </div>
 
@@ -304,7 +308,7 @@ function ListPage() {
                                   className="delete-search-btn"
                                   onClick={() => handleDeleteSavedSearch(search.id)}
                                 >
-                                  <X size={14} />
+                                  <span className="icon">✕</span>
                                 </button>
                               </li>
                             ))}
@@ -335,7 +339,7 @@ function ListPage() {
                   }}
                   title="Share Search"
                 >
-                  <Share2 size={18} />
+                  <span className="icon">📤</span>
                 </button>
               </div>
             </div>
@@ -355,20 +359,25 @@ function ListPage() {
           <div className="results-summary">
             <Suspense fallback={<span>Loading...</span>}>
               <Await resolve={data.postResponse}>
-                {(postResponse) => (
-                  <div className="results-count">
-                    <strong>{postResponse.data.length}</strong> properties found
-                    {searchParams.get("city") && (
-                      <>
-                        {" in "}
-                        <span className="location-highlight">
-                          <MapPin size={14} />
-                          {searchParams.get("city")}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                )}
+                {(postResponse) => {
+                  // Store all properties for map usage
+                  setAllProperties(postResponse.data)
+
+                  return (
+                    <div className="results-count">
+                      <strong>{postResponse.data.length}</strong> properties found
+                      {searchQuery && (
+                        <>
+                          {" in "}
+                          <span className="location-highlight">
+                            <span className="icon">📍</span>
+                            {searchQuery}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )
+                }}
               </Await>
             </Suspense>
 
@@ -378,7 +387,7 @@ function ListPage() {
                 onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
                 title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               >
-                {isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                {isSidebarCollapsed ? "▶" : "◀"}
               </button>
             )}
           </div>
@@ -399,6 +408,16 @@ function ListPage() {
                   {(postResponse) => {
                     // Apply filters and sorting
                     let properties = [...postResponse.data]
+
+                    // Filter by search query if provided
+                    if (searchQuery) {
+                      properties = properties.filter(
+                        (property) =>
+                          property.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          property.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          property.city?.toLowerCase().includes(searchQuery.toLowerCase()),
+                      )
+                    }
 
                     // Filter by map bounds if in map or split view and map is loaded
                     if ((viewMode === "map" || viewMode === "split") && isMapLoaded && mapBounds) {
@@ -470,14 +489,19 @@ function ListPage() {
                     ) : (
                       <div className="no-results">
                         <div className="no-results-content">
-                          <Info size={48} />
+                          <span className="icon">ℹ️</span>
                           <h3>No properties found</h3>
-                          <p>Try adjusting your search filters</p>
+                          <p>
+                            {searchQuery
+                              ? `No properties found for "${searchQuery}"`
+                              : "Try adjusting your search filters"}
+                          </p>
                           <button
                             className="clear-filters-btn"
                             onClick={() => {
                               setSearchParams(new URLSearchParams())
                               setActiveFilters({})
+                              setSearchQuery("")
                             }}
                           >
                             Clear All Filters
@@ -498,7 +522,7 @@ function ListPage() {
             <Suspense
               fallback={
                 <div className="map-loading">
-                  <div className="loading-spinner"></div>
+                  <div className="loading-spinner">🔄</div>
                   <p>Loading map...</p>
                 </div>
               }
@@ -514,12 +538,15 @@ function ListPage() {
               >
                 {(postResponse) => (
                   <PropertyMap
-                    properties={filteredProperties.length > 0 ? filteredProperties : postResponse.data}
+                    items={filteredProperties.length > 0 ? filteredProperties : []}
+                    properties={postResponse.data}
                     userLocation={userLocation}
                     selectedProperty={selectedProperty}
                     onPropertySelect={handlePropertyClick}
                     onBoundsChange={handleMapBoundsChange}
                     onMapLoaded={() => setIsMapLoaded(true)}
+                    searchQuery={searchQuery}
+                    showUserLocation={true}
                   />
                 )}
               </Await>

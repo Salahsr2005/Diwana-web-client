@@ -54,14 +54,12 @@ export const SocketContextProvider = ({ children }) => {
         setOnlineUsers([])
       }
     } else {
-      if (socket) {
-        socket.close()
-        setSocket(null)
-        setIsConnected(false)
-        setOnlineUsers([])
-      }
+      // Clean up when user logs out
+      setSocket(null)
+      setIsConnected(false)
+      setOnlineUsers([])
     }
-  }, [currentUser, socket])
+  }, [currentUser])
 
   const value = {
     socket,

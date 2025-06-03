@@ -1,180 +1,138 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import mapboxgl from "mapbox-gl"
-import "mapbox-gl/dist/mapbox-gl.css"
+import { useState, useEffect, useRef } from "react"
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet"
+import "leaflet/dist/leaflet.css"
+import { icon } from "leaflet"
 import "./location-picker.scss"
-import { Search, MapPin, X, Layers, Navigation, Crosshair, Info } from "lucide-react"
+import { Search, MapPin, Navigation, Target, X, Loader } from "lucide-react"
 
-// Replace with your actual Mapbox access token
-mapboxgl.accessToken = "pk.eyJ1Ijoic2FsYWgwNSIsImEiOiJjbWJjcWxpNnYxcG42MmxzNnRwZ3VpdnF6In0.IBK4dh0Q9ybfobOwkY9aww"
+// Fix for default markers
+const ICON = icon({
+  iconUrl: "/marker-icon.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+})
 
-function LocationPicker({ onLocationSelect, initialLocation = null, initialAddress = "" }) {
-  const mapContainer = useRef(null)
-  const map = useRef(null)
-  const marker = useRef(null)
-  const geocoder = useRef(null)
+const USER_ICON = icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+    <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="12" fill="#3b82f6" stroke="white" strokeWidth="3"/>
+      <circle cx="15" cy="15" r="4" fill="white"/>
+    </svg>
+  `),
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+})
 
-  const [mapLoaded, setMapLoaded] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState([])
-  const [selectedLocation, setSelectedLocation] = useState(initialLocation || null)
-  const [address, setAddress] = useState(initialAddress || "")
-  const [isSearching, setIsSearching] = useState(false)
-  const [mapStyle, setMapStyle] = useState("streets-v12")
-  const [showTooltip, setShowTooltip] = useState(false)
+function LocationMarker({ position, onLocationSelect, draggable = true }) {
+  const [markerPosition, setMarkerPosition] = useState(position)
 
-  // Default center (London)
-  const defaultCenter = [-0.1278, 51.5074]
-  const defaultZoom = 13
-
-  // Initialize map
   useEffect(() => {
-    if (map.current) return // Initialize map only once
+    setMarkerPosition(position)
+  }, [position])
 
-    try {
-      // Use initial location or default
-      const center = initialLocation
-        ? [Number(initialLocation.longitude), Number(initialLocation.latitude)]
-        : defaultCenter
+  const eventHandlers = {
+    dragend(e) {
+      const marker = e.target
+      const newPosition = marker.getLatLng()
+      const newPos = [newPosition.lat, newPosition.lng]
+      setMarkerPosition(newPos)
 
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: `mapbox://styles/mapbox/${mapStyle}`,
-        center: center,
-        zoom: defaultZoom,
-        attributionControl: false,
-      })
-
-      // Add navigation controls
-      map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
-      map.current.addControl(
-        new mapboxgl.GeolocateControl({
-          positionOptions: {
-            enableHighAccuracy: true,
-          },
-          trackUserLocation: true,
-          showUserHeading: true,
-        }),
-        "top-right",
-      )
-
-      // Add scale control
-      map.current.addControl(new mapboxgl.ScaleControl(), "bottom-left")
-
-      // Set up marker if initial location exists
-      if (initialLocation) {
-        const lngLat = [Number(initialLocation.longitude), Number(initialLocation.latitude)]
-        addMarker(lngLat)
-        setSelectedLocation({
-          latitude: lngLat[1],
-          longitude: lngLat[0],
-        })
-      }
-
-      // Map click handler
-      map.current.on("click", (e) => {
-        const lngLat = [e.lngLat.lng, e.lngLat.lat]
-        addMarker(lngLat)
-        setSelectedLocation({
-          latitude: lngLat[1],
-          longitude: lngLat[0],
-        })
-
-        // Get address from coordinates (reverse geocoding)
-        reverseGeocode(lngLat)
-
-        // Notify parent component
+      // Reverse geocode to get address
+      reverseGeocode(newPosition.lat, newPosition.lng).then((address) => {
         onLocationSelect({
-          latitude: lngLat[1],
-          longitude: lngLat[0],
-          address: address,
+          latitude: newPosition.lat,
+          longitude: newPosition.lng,
+          address: address || `${newPosition.lat.toFixed(6)}, ${newPosition.lng.toFixed(6)}`,
         })
       })
-
-      // Set map loaded state when ready
-      map.current.on("load", () => {
-        setMapLoaded(true)
-
-        // Show tooltip after map loads
-        setTimeout(() => {
-          setShowTooltip(true)
-
-          // Hide tooltip after 5 seconds
-          setTimeout(() => {
-            setShowTooltip(false)
-          }, 5000)
-        }, 1000)
-      })
-    } catch (error) {
-      console.error("Error initializing map:", error)
-    }
-
-    return () => {
-      if (map.current) {
-        map.current.remove()
-        map.current = null
-      }
-    }
-  }, [])
-
-  // Update map style when changed
-  useEffect(() => {
-    if (map.current && mapLoaded) {
-      map.current.setStyle(`mapbox://styles/mapbox/${mapStyle}`)
-    }
-  }, [mapStyle, mapLoaded])
-
-  // Add or update marker
-  const addMarker = (lngLat) => {
-    // Remove existing marker if any
-    if (marker.current) {
-      marker.current.remove()
-    }
-
-    // Create marker element
-    const el = document.createElement("div")
-    el.className = "location-marker"
-
-    // Create pulse animation element
-    const pulse = document.createElement("div")
-    pulse.className = "pulse"
-    el.appendChild(pulse)
-
-    // Create pin element
-    const pin = document.createElement("div")
-    pin.className = "pin"
-    el.appendChild(pin)
-
-    // Create new marker
-    marker.current = new mapboxgl.Marker({
-      element: el,
-      draggable: true,
-    })
-      .setLngLat(lngLat)
-      .addTo(map.current)
-
-    // Handle marker drag end
-    marker.current.on("dragend", () => {
-      const lngLat = marker.current.getLngLat()
-      setSelectedLocation({
-        latitude: lngLat.lat,
-        longitude: lngLat.lng,
-      })
-
-      // Get address from coordinates
-      reverseGeocode([lngLat.lng, lngLat.lat])
-
-      // Notify parent component
-      onLocationSelect({
-        latitude: lngLat.lat,
-        longitude: lngLat.lng,
-        address: address,
-      })
-    })
+    },
   }
 
-  // Search for locations using Mapbox Geocoding API
+  useMapEvents({
+    click(e) {
+      const newPosition = [e.latlng.lat, e.latlng.lng]
+      setMarkerPosition(newPosition)
+
+      // Reverse geocode to get address
+      reverseGeocode(e.latlng.lat, e.latlng.lng).then((address) => {
+        onLocationSelect({
+          latitude: e.latlng.lat,
+          longitude: e.latlng.lng,
+          address: address || `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`,
+        })
+      })
+    },
+  })
+
+  return markerPosition ? (
+    <Marker position={markerPosition} icon={ICON} draggable={draggable} eventHandlers={eventHandlers} />
+  ) : null
+}
+
+function UserLocationMarker({ position }) {
+  return position ? <Marker position={position} icon={USER_ICON} /> : null
+}
+
+// Reverse geocoding function
+const reverseGeocode = async (lat, lng) => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+    )
+    const data = await response.json()
+    return data.display_name || null
+  } catch (error) {
+    console.error("Reverse geocoding error:", error)
+    return null
+  }
+}
+
+function LocationPicker({ onLocationSelect, initialLocation, initialAddress, className = "" }) {
+  const [selectedLocation, setSelectedLocation] = useState(
+    initialLocation ? [initialLocation.latitude, initialLocation.longitude] : null,
+  )
+  const [userLocation, setUserLocation] = useState(null)
+  const [searchQuery, setSearchQuery] = useState(initialAddress || "")
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [mapCenter, setMapCenter] = useState([40.7128, -74.006]) // Default to NYC
+  const [mapZoom, setMapZoom] = useState(13)
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [mapKey, setMapKey] = useState(0) // Force map re-render
+  const searchTimeoutRef = useRef(null)
+
+  // Get user's current location
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userPos = [position.coords.latitude, position.coords.longitude]
+          setUserLocation(userPos)
+          setMapCenter(userPos)
+          setMapZoom(15)
+          setMapKey((prev) => prev + 1) // Force map re-render
+          setIsGettingLocation(false)
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+          setIsGettingLocation(false)
+          alert("Unable to get your location. Please search for an address or click on the map.")
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      )
+    } else {
+      setIsGettingLocation(false)
+      alert("Geolocation is not supported by this browser.")
+    }
+  }
+
+  // Search for locations using Nominatim API
   const searchLocation = async (query) => {
     if (!query.trim()) {
       setSearchResults([])
@@ -182,247 +140,200 @@ function LocationPicker({ onLocationSelect, initialLocation = null, initialAddre
     }
 
     setIsSearching(true)
-
     try {
-      const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-      const params = new URLSearchParams({
-        access_token: mapboxgl.accessToken,
-        limit: 5,
-        types: "address,place,neighborhood,locality,district",
-      })
-
-      const response = await fetch(`${endpoint}?${params}`)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query,
+        )}&limit=5&addressdetails=1`,
+      )
       const data = await response.json()
 
-      if (data.features) {
-        setSearchResults(data.features)
-      }
+      const results = data.map((item) => ({
+        id: item.place_id,
+        display_name: item.display_name,
+        lat: Number.parseFloat(item.lat),
+        lon: Number.parseFloat(item.lon),
+        address: item.display_name,
+      }))
+
+      setSearchResults(results)
+      setShowSearchResults(true)
     } catch (error) {
-      console.error("Error searching for location:", error)
+      console.error("Search error:", error)
+      setSearchResults([])
     } finally {
       setIsSearching(false)
     }
   }
 
-  // Reverse geocode to get address from coordinates
-  const reverseGeocode = async (lngLat) => {
-    try {
-      const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lngLat[0]},${lngLat[1]}.json`
-      const params = new URLSearchParams({
-        access_token: mapboxgl.accessToken,
-        limit: 1,
-      })
-
-      const response = await fetch(`${endpoint}?${params}`)
-      const data = await response.json()
-
-      if (data.features && data.features.length > 0) {
-        const feature = data.features[0]
-        setAddress(feature.place_name)
-
-        // Notify parent component with updated address
-        onLocationSelect({
-          latitude: lngLat[1],
-          longitude: lngLat[0],
-          address: feature.place_name,
-        })
-      }
-    } catch (error) {
-      console.error("Error reverse geocoding:", error)
-    }
-  }
-
-  // Handle search input change
+  // Handle search input change with debouncing
   const handleSearchChange = (e) => {
-    const query = e.target.value
-    setSearchQuery(query)
+    const value = e.target.value
+    setSearchQuery(value)
 
-    // Debounce search requests
-    if (geocoder.current) {
-      clearTimeout(geocoder.current)
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
     }
 
-    geocoder.current = setTimeout(() => {
-      searchLocation(query)
-    }, 300)
+    // Set new timeout for search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation(value)
+    }, 500)
   }
 
   // Handle search result selection
-  const handleResultSelect = (result) => {
-    const coordinates = result.center
+  const handleSearchResultSelect = (result) => {
+    const newLocation = [result.lat, result.lon]
+    setSelectedLocation(newLocation)
+    setMapCenter(newLocation)
+    setMapZoom(16)
+    setSearchQuery(result.display_name)
+    setShowSearchResults(false)
+    setMapKey((prev) => prev + 1) // Force map re-render
 
-    // Fly to location
-    map.current.flyTo({
-      center: coordinates,
-      zoom: 15,
-      essential: true,
-    })
-
-    // Add marker
-    addMarker(coordinates)
-
-    // Update state
-    setSelectedLocation({
-      latitude: coordinates[1],
-      longitude: coordinates[0],
-    })
-    setAddress(result.place_name)
-    setSearchResults([])
-    setSearchQuery("")
-
-    // Notify parent component
     onLocationSelect({
-      latitude: coordinates[1],
-      longitude: coordinates[0],
-      address: result.place_name,
+      latitude: result.lat,
+      longitude: result.lon,
+      address: result.display_name,
     })
   }
 
-  // Clear search and results
+  // Handle location selection from map
+  const handleLocationSelect = (location) => {
+    setSelectedLocation([location.latitude, location.longitude])
+    setSearchQuery(location.address)
+    onLocationSelect(location)
+  }
+
+  // Clear search and selection
   const clearSearch = () => {
     setSearchQuery("")
     setSearchResults([])
+    setShowSearchResults(false)
+    setSelectedLocation(null)
+    onLocationSelect(null)
   }
 
-  // Center map on current location
-  const centerOnCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords
-
-          // Fly to location
-          map.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 15,
-            essential: true,
-          })
-
-          // Add marker
-          addMarker([longitude, latitude])
-
-          // Update state
-          setSelectedLocation({
-            latitude,
-            longitude,
-          })
-
-          // Get address from coordinates
-          reverseGeocode([longitude, latitude])
-        },
-        (error) => {
-          console.error("Error getting current location:", error)
-        },
-      )
+  // Initialize map center based on initial location
+  useEffect(() => {
+    if (initialLocation) {
+      setMapCenter([initialLocation.latitude, initialLocation.longitude])
+      setMapZoom(16)
+      setMapKey((prev) => prev + 1) // Force map re-render
     }
-  }
-
-  // Reset map view
-  const resetMapView = () => {
-    if (selectedLocation) {
-      map.current.flyTo({
-        center: [selectedLocation.longitude, selectedLocation.latitude],
-        zoom: 15,
-        essential: true,
-      })
-    } else {
-      map.current.flyTo({
-        center: defaultCenter,
-        zoom: defaultZoom,
-        essential: true,
-      })
-    }
-  }
-
-  // Toggle map style
-  const toggleMapStyle = () => {
-    const styles = ["streets-v12", "satellite-streets-v12", "light-v11", "dark-v11"]
-    const currentIndex = styles.indexOf(mapStyle)
-    const nextIndex = (currentIndex + 1) % styles.length
-    setMapStyle(styles[nextIndex])
-  }
+  }, [initialLocation])
 
   return (
-    <div className="location-picker">
-      <div className="map-container">
-        <div ref={mapContainer} className="map" />
+    <div className={`location-picker ${className}`}>
+      <div className="location-picker-header">
+        <h3>📍 Select Property Location</h3>
+        <p>Search for an address or click on the map to set the exact location</p>
+      </div>
 
-        {/* Search Bar */}
-        <div className="search-container">
-          <div className="search-bar">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search for a location..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-            {searchQuery && (
-              <button className="clear-search" onClick={clearSearch}>
-                <X size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* Search Results */}
-          {searchResults.length > 0 && (
-            <div className="search-results">
-              {searchResults.map((result) => (
-                <div key={result.id} className="search-result-item" onClick={() => handleResultSelect(result)}>
-                  <MapPin size={16} />
-                  <span>{result.place_name}</span>
-                </div>
-              ))}
+      {/* Search Bar */}
+      <div className="search-section">
+        <div className="search-input-container">
+          <Search size={20} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search for an address, city, or landmark..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="search-input"
+          />
+          {searchQuery && (
+            <button onClick={clearSearch} className="clear-search-btn">
+              <X size={16} />
+            </button>
+          )}
+          {isSearching && (
+            <div className="search-loading-icon">
+              <Loader size={16} className="spin" />
             </div>
           )}
         </div>
 
-        {/* Map Controls */}
-        <div className="map-controls">
-          <button className="map-control-btn" onClick={toggleMapStyle} title="Change map style">
-            <Layers size={18} />
-          </button>
-          <button className="map-control-btn" onClick={centerOnCurrentLocation} title="Use my location">
-            <Navigation size={18} />
-          </button>
-          <button className="map-control-btn" onClick={resetMapView} title="Reset view">
-            <Crosshair size={18} />
-          </button>
-        </div>
+        <button
+          onClick={getCurrentLocation}
+          disabled={isGettingLocation}
+          className="get-location-btn"
+          title="Use my current location"
+        >
+          {isGettingLocation ? <Loader size={16} className="spin" /> : <Navigation size={16} />}
+          <span>{isGettingLocation ? "Getting location..." : "Use my location"}</span>
+        </button>
 
-        {/* Selected Location Info */}
-        {selectedLocation && (
-          <div className="selected-location">
-            <div className="location-header">
-              <MapPin size={16} />
-              <h4>Selected Location</h4>
-            </div>
-            <div className="location-details">
-              <p className="location-address">{address || "Address not available"}</p>
-              <div className="coordinates">
-                <span>Lat: {selectedLocation.latitude.toFixed(6)}</span>
-                <span>Lng: {selectedLocation.longitude.toFixed(6)}</span>
-              </div>
-            </div>
+        {/* Search Results */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div className="search-results">
+            {searchResults.map((result) => (
+              <button key={result.id} onClick={() => handleSearchResultSelect(result)} className="search-result-item">
+                <MapPin size={16} />
+                <span>{result.display_name}</span>
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Tooltip */}
-        {showTooltip && (
-          <div className="map-tooltip">
-            <Info size={16} />
-            <span>Click on the map to set a location or search for an address</span>
-          </div>
-        )}
-
-        {/* Loading Overlay */}
-        {!mapLoaded && (
-          <div className="map-loading">
-            <div className="loading-spinner"></div>
-            <p>Loading map...</p>
+        {showSearchResults && searchResults.length === 0 && !isSearching && searchQuery.length > 2 && (
+          <div className="no-results">
+            <p>No results found for {searchQuery}</p>
           </div>
         )}
       </div>
+
+      {/* Map Container */}
+      <div className="map-container">
+        <MapContainer key={mapKey} center={mapCenter} zoom={mapZoom} scrollWheelZoom={true} className="location-map">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {/* User Location Marker */}
+          <UserLocationMarker position={userLocation} />
+
+          {/* Selected Location Marker */}
+          <LocationMarker position={selectedLocation} onLocationSelect={handleLocationSelect} draggable={true} />
+        </MapContainer>
+
+        {/* Map Instructions */}
+        <div className="map-instructions">
+          <div className="instruction-item">
+            <Target size={16} />
+            <span>Click on the map to set location</span>
+          </div>
+          <div className="instruction-item">
+            <span>🔵</span>
+            <span>Your current location</span>
+          </div>
+          <div className="instruction-item">
+            <span>📍</span>
+            <span>Selected property location (draggable)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Location Info */}
+      {selectedLocation && (
+        <div className="selected-location-info">
+          <h4>📍 Selected Location</h4>
+          <div className="location-details">
+            <div className="coordinate">
+              <strong>Latitude:</strong> {selectedLocation[0].toFixed(6)}
+            </div>
+            <div className="coordinate">
+              <strong>Longitude:</strong> {selectedLocation[1].toFixed(6)}
+            </div>
+            {searchQuery && (
+              <div className="address">
+                <strong>Address:</strong> {searchQuery}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

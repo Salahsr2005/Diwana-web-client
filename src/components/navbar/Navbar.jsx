@@ -8,24 +8,6 @@ import { useComparison } from "../../context/ComparisonContext"
 import { useTheme } from "../../context/themeContext"
 import { SocketContext } from "../../context/SocketContext"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  Home,
-  Search,
-  PlusCircle,
-  MessageSquare,
-  User,
-  Heart,
-  Moon,
-  Sun,
-  ChevronDown,
-  BarChart2,
-  Layers,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Bell,
-} from "lucide-react"
 
 function Navbar() {
   const { currentUser, logout } = useContext(AuthContext)
@@ -91,39 +73,32 @@ function Navbar() {
               whileHover={{ rotate: 10 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
+              🏠
             </motion.div>
             <span className="logo-text">DreamHome</span>
           </Link>
 
           <div className="desktop-nav">
             <Link to="/" className={`nav-link ${isActive("/") ? "active" : ""}`}>
-              <Home size={18} />
+              <span className="nav-icon">🏠</span>
               <span>Home</span>
             </Link>
             <Link to="/list" className={`nav-link ${isActive("/list") ? "active" : ""}`}>
-              <Search size={18} />
+              <span className="nav-icon">🔍</span>
               <span>Explore</span>
+            </Link>
+            <Link to="/users" className={`nav-link ${isActive("/users") ? "active" : ""}`}>
+              <span className="nav-icon">👥</span>
+              <span>Users</span>
             </Link>
             {currentUser && (
               <>
                 <Link to="/add" className={`nav-link ${isActive("/add") ? "active" : ""}`}>
-                  <PlusCircle size={18} />
+                  <span className="nav-icon">➕</span>
                   <span>Add Property</span>
                 </Link>
                 <Link to="/profile" className={`nav-link ${isActive("/profile") ? "active" : ""}`}>
-                  <MessageSquare size={18} />
+                  <span className="nav-icon">💬</span>
                   <span>Messages</span>
                   {isConnected && <span className="connection-dot online"></span>}
                   {!isConnected && <span className="connection-dot offline"></span>}
@@ -141,20 +116,20 @@ function Navbar() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Layers size={18} />
+              <span className="comparison-icon">📊</span>
               <span>Compare</span>
               <span className="comparison-count">{comparisonList.length}</span>
             </motion.button>
           )}
 
           <button className="theme-toggle" onClick={toggleTheme}>
-            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            {theme === "light" ? "🌙" : "☀️"}
           </button>
 
           {currentUser ? (
             <>
               <button className="notification-btn">
-                <Bell size={18} />
+                <span className="notification-icon">🔔</span>
                 <span className="notification-badge">3</span>
               </button>
 
@@ -166,7 +141,7 @@ function Navbar() {
                 >
                   <img src={currentUser.avatar || "/noavatar.jpg"} alt={currentUser.username} className="user-avatar" />
                   <span className="user-name">{currentUser.username}</span>
-                  <ChevronDown size={16} className={`arrow ${userMenuOpen ? "open" : ""}`} />
+                  <span className={`arrow ${userMenuOpen ? "open" : ""}`}>▼</span>
                 </motion.button>
 
                 <AnimatePresence>
@@ -193,26 +168,26 @@ function Navbar() {
                       <div className="dropdown-divider"></div>
 
                       <Link to="/profile" className="dropdown-item">
-                        <User size={16} />
+                        <span className="dropdown-icon">👤</span>
                         <span>My Profile</span>
                       </Link>
                       <Link to="/profile/favorites" className="dropdown-item">
-                        <Heart size={16} />
+                        <span className="dropdown-icon">❤️</span>
                         <span>Saved Properties</span>
                       </Link>
                       <Link to="/profile/analytics" className="dropdown-item">
-                        <BarChart2 size={16} />
+                        <span className="dropdown-icon">📊</span>
                         <span>Analytics</span>
                       </Link>
                       <Link to="/profile/settings" className="dropdown-item">
-                        <Settings size={16} />
+                        <span className="dropdown-icon">⚙️</span>
                         <span>Settings</span>
                       </Link>
 
                       <div className="dropdown-divider"></div>
 
                       <button className="dropdown-item logout" onClick={handleLogout}>
-                        <LogOut size={16} />
+                        <span className="dropdown-icon">🚪</span>
                         <span>Sign Out</span>
                       </button>
                     </motion.div>
@@ -232,7 +207,7 @@ function Navbar() {
           )}
 
           <button className="mobile-menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? "✕" : "☰"}
           </button>
         </div>
       </div>
@@ -249,21 +224,25 @@ function Navbar() {
           >
             <div className="mobile-nav">
               <Link to="/" className={`mobile-nav-link ${isActive("/") ? "active" : ""}`}>
-                <Home size={20} />
+                <span className="nav-icon">🏠</span>
                 <span>Home</span>
               </Link>
               <Link to="/list" className={`mobile-nav-link ${isActive("/list") ? "active" : ""}`}>
-                <Search size={20} />
+                <span className="nav-icon">🔍</span>
                 <span>Explore</span>
+              </Link>
+              <Link to="/users" className={`mobile-nav-link ${isActive("/users") ? "active" : ""}`}>
+                <span className="nav-icon">👥</span>
+                <span>Users</span>
               </Link>
               {currentUser && (
                 <>
                   <Link to="/add" className={`mobile-nav-link ${isActive("/add") ? "active" : ""}`}>
-                    <PlusCircle size={20} />
+                    <span className="nav-icon">➕</span>
                     <span>Add Property</span>
                   </Link>
                   <Link to="/profile" className={`mobile-nav-link ${isActive("/profile") ? "active" : ""}`}>
-                    <MessageSquare size={20} />
+                    <span className="nav-icon">💬</span>
                     <span>Messages</span>
                     {isConnected && <span className="connection-dot online"></span>}
                   </Link>
@@ -287,19 +266,19 @@ function Navbar() {
 
                 <div className="mobile-user-actions">
                   <Link to="/profile" className="mobile-action-link">
-                    <User size={18} />
+                    <span className="action-icon">👤</span>
                     <span>Profile</span>
                   </Link>
                   <Link to="/profile/favorites" className="mobile-action-link">
-                    <Heart size={18} />
+                    <span className="action-icon">❤️</span>
                     <span>Favorites</span>
                   </Link>
                   <Link to="/profile/settings" className="mobile-action-link">
-                    <Settings size={18} />
+                    <span className="action-icon">⚙️</span>
                     <span>Settings</span>
                   </Link>
                   <button className="mobile-action-link logout" onClick={handleLogout}>
-                    <LogOut size={18} />
+                    <span className="action-icon">🚪</span>
                     <span>Sign Out</span>
                   </button>
                 </div>
